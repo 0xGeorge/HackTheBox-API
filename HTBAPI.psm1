@@ -58,7 +58,7 @@ function Get-Machines {
     }
     # Produce an output
     if ($NoOutput -eq $false) {
-        $json
+        return $json
     }
     else {
         Set-Variable -Name json -Value $json -Scope Global
@@ -119,7 +119,7 @@ function Get-MachinesOwned {
     }
     # Produce an output
     if ($NoOutput -eq $false) {
-        $json2
+        return $json2
     }
     else {
         Set-Variable -Name json2 -Value $json2 -Scope Global
@@ -312,7 +312,7 @@ function Get-MachineDetails {
                             $Machine | Add-Member -NotePropertyName owned_root -NotePropertyValue $false
                         }
                         # Produce an output
-                        $Machine
+                        Write-Output $Machine
                     }
                 }
                 # Match retired and owned
@@ -323,7 +323,7 @@ function Get-MachineDetails {
                         $Machine | Add-Member -NotePropertyName owned_user -NotePropertyValue $own.owned_user
                         $Machine | Add-Member -NotePropertyName owned_root -NotePropertyValue $own.owned_root
                         # Produce an output
-                        $Machine
+                        Write-Output $Machine
                     }
                 }
                 # Match active and owned
@@ -334,7 +334,7 @@ function Get-MachineDetails {
                         $Machine | Add-Member -NotePropertyName owned_user -NotePropertyValue $own.owned_user
                         $Machine | Add-Member -NotePropertyName owned_root -NotePropertyValue $own.owned_root
                         # Produce an output
-                        $Machine
+                        Write-Output $Machine
                     }
                 }
                 # Match all owned machines
@@ -345,7 +345,7 @@ function Get-MachineDetails {
                         $Machine | Add-Member -NotePropertyName owned_user -NotePropertyValue $own.owned_user
                         $Machine | Add-Member -NotePropertyName owned_root -NotePropertyValue $own.owned_root
                         # Produce an output
-                        $Machine
+                        Write-Output $Machine
                     }
                 }
                 # Match all unowned machines
@@ -361,7 +361,7 @@ function Get-MachineDetails {
                         $Machine | Add-Member -NotePropertyName owned_root -NotePropertyValue $false
                     }
                     # Produce an output
-                    $Machine
+                    Write-Output $Machine
                 }
                 # Match active unowned machines
                 if ($Status -eq "Active" -and $Owned -eq $false) {
@@ -378,7 +378,7 @@ function Get-MachineDetails {
                             $Machine | Add-Member -NotePropertyName owned_root -NotePropertyValue $false
                         }
                         # Produce an output
-                        $Machine
+                        Write-Output $Machine
                     }                    
                 }               
             }
