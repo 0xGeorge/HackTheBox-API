@@ -47,9 +47,7 @@ function Get-Machines {
     }
     # Error if unexpected response
     if ($StatusCode -ne 200) {
-        Write-Host "[-] ERROR" -ForegroundColor Red -NoNewline
-        Write-Host ": Could not fetch machine details. " -NoNewline
-        Write-Host "Received unexpected status code: $StatusCode"
+        Write-Error "Could not fetch machine details. Received unexpected status code: $StatusCode"
         return
     }
     # Parse and store data
@@ -108,9 +106,7 @@ function Get-MachinesOwned {
     }
     # Produce an error if unexpected response
     if ($StatusCode -ne 200) {
-        Write-Host "[-] ERROR" -ForegroundColor Red -NoNewline
-        Write-Host ": Could not fetch owned machines. " -NoNewline
-        Write-Host "Received unexpected status code: $StatusCode"
+        Write-Error "Could not fetch owned machines. Received unexpected status code: $StatusCode"
         return
     }
     # Parse data and store
@@ -202,8 +198,7 @@ function Get-MachineDetails {
     if ($PSCmdlet.ParameterSetName -eq "MachineName") {
         # Validate input
         if ($MachineName -notmatch '^\w+$') {
-            Write-Host "[-] ERROR" -ForegroundColor Red -NoNewline
-            Write-Host ": Invalid Machine Name. No spaces or special characters allowed!"
+            Write-Error "Invalid Machine Name. No spaces or special characters allowed!"
             return
         }
         # Loop through machines and find match
@@ -225,16 +220,14 @@ function Get-MachineDetails {
         }
         # Produce an error if can't find machine
         if ($Machine) {
-            Write-Host "[-] ERROR" -ForegroundColor Red -NoNewline
-            Write-Host ": Could not find machine!"
+            Write-Error "Could not find machine!"
         }
     }
     # Determine ParameterSet used
     if ($PSCmdlet.ParameterSetName -eq "MachineIP") {
         # Validate input
         if ($MachineIP -notmatch '^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$') {
-            Write-Host "[-] ERROR " -ForegroundColor Red -NoNewline
-            Write-Host ": Enter a valid IPv4 address!"
+            Write-Error "Enter a valid IPv4 address!"
             return
         }
         # Loop through machine data and find a match
@@ -256,16 +249,14 @@ function Get-MachineDetails {
         }
         # Produce an error if can't find machine
         if ($Machine) {
-            Write-Host "[-] ERROR" -ForegroundColor Red -NoNewline
-            Write-Host ": Could not find machine!"
+            Write-Error "Could not find machine!"
         }
     }
     # Determine ParameterSet used
     if ($PSCmdlet.ParameterSetName -eq "MachineID") {
         # Validate input
         if ($MachineID -notmatch '^\d{1,3}$') {
-            Write-Host "[-] ERROR" -ForegroundColor Red -NoNewline
-            Write-Host ": Invalid Machine ID. Must be no larger than 3 digits!"
+            Write-Error "Invalid Machine ID. Must be no larger than 3 digits!"
             return
         }
         # Loop through machines
@@ -287,8 +278,7 @@ function Get-MachineDetails {
         }
         # Produce an erorr if can't find machine
         if ($Machine) {
-            Write-Host "[-] ERROR" -ForegroundColor Red -NoNewline
-            Write-Host ": Could not find machine!"
+            Write-Error "Could not find machine!"
         }
     }
     # Determine ParameterSet used
@@ -443,15 +433,13 @@ function Submit-Flag {
 
     # Check if difficulty is between 1-10
     if ($Difficulty -notmatch '^([1-9]|10)$') {
-        Write-Host "[-] ERROR" -ForegroundColor Red -NoNewline
-        Write-Host ": Invalid Difficulty. Provide a value between 1-10!"
+        Write-Error "Invalid Difficulty. Provide a value between 1-10!"
         return
     }
 
     # Check flag is in acceptable format
     if ($Flag -notmatch '^\w{32}$') {
-        Write-Host "[-] ERROR" -ForegroundColor Red -NoNewline
-        Write-Host ": Invalid Flag format. Expecting 32 character alphanumeric string!"
+        Write-Error "Invalid Flag format. Expecting 32 character alphanumeric string!"
         return
     }
 
@@ -461,24 +449,21 @@ function Submit-Flag {
     # Check which parameter was passed and verify format before retrieving machine details
     if ($PSCmdlet.ParameterSetName -eq "MachineName") {
         if ($MachineName -notmatch '^(\d|\w)+$') {
-            Write-Host "[-] ERROR" -ForegroundColor Red -NoNewline
-            Write-Host ": Invalid Machine Name. No spaces or special characters allowed!"
+            Write-Error "Invalid Machine Name. No spaces or special characters allowed!"
             return
         }
         Get-MachineDetails -MachineName $MachineName
     }
     if ($PSCmdlet.ParameterSetName -eq "MachineIP") {
         if ($MachineIP -notmatch '^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$') {
-            Write-Host "[-] ERROR " -ForegroundColor Red -NoNewline
-            Write-Host ": Enter a valid IPv4 address!"
+            Write-Error "Enter a valid IPv4 address!"
             return
         }
         Get-MachineDetails -MachineIP $MachineIP
     }
     if ($PSCmdlet.ParameterSetName -eq "MachineID") {
         if ($MachineID -notmatch '^\d{1,3}$') {
-            Write-Host "[-] ERROR" -ForegroundColor Red -NoNewline
-            Write-Host ": Invalid Machine ID. Must be no larger than 3 digits!"
+            Write-Error "Invalid Machine ID. Must be no larger than 3 digits!"
             return
         }
         Get-MachineDetails -MachineID $MachineID
@@ -497,9 +482,7 @@ function Submit-Flag {
     }
     # Produce error if not 200 status
     if ($StatusCode -ne 200) {
-        Write-Host "[-] ERROR" -ForegroundColor Red -NoNewline
-        Write-Host ": Could not submit flag. " -NoNewline
-        Write-Host "Received unexpected status code: $StatusCode"
+        Write-Error "Could not submit flag. Received unexpected status code: $StatusCode"
         return
     }
     # Parse the data
@@ -508,16 +491,11 @@ function Submit-Flag {
     }
     # Determine if success or not
     if ($json.success -eq 0) {
-        Write-Host "[-] ERROR" -ForegroundColor Red -NoNewline
-        Write-Host ": Could not submit flag. " -NoNewline
-        Write-Host "API Returned: ${json.status}"
+        Write-Error "Could not submit flag. API Returned: ${json.status}"
     }
     # Produce an output
     else {
-        Write-Host "[+] " -ForegroundColor DarkGreen -NoNewline
-        Write-Host "Successfully sumitted flag!"
-        # Check what the parameter is
-        Write-Host "[+] " -ForegroundColor DarkGreen -NoNewline
-        Write-Host $json.status
+        Write-Output "Successfully sumitted flag!"
+        Write-Output $json.status
     }
 }
