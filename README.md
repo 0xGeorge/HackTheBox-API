@@ -17,7 +17,7 @@ Currently functionality:
 - Find if you are connected to VPN successfully
 - Retrieve ProLab progress
 
-Now utilises v4 API which requires the use of a JWT compared to the API key. A command which uses the v4 API will prompt for credentials upon first usage. This will authenticate to HackTheBox website and encrypt it and store on disk under the path where the PowerShell module was loaded. Token renewal occurs every 29 days.
+Now utilises v4 API which requires the use of a JWT compared to the API key. A command which uses the v4 API will prompt for credentials upon first usage. This will authenticate to HackTheBox website and encrypt it and store on disk (encrypted) under the path where the PowerShell module was loaded. Token renewal occurs every 29 days.
 
 ## Pre-requisites
 - Retrieve HackTheBox API Key (https://www.hackthebox.eu/home/settings)
