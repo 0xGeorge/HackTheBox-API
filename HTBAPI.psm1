@@ -124,10 +124,10 @@ function Get-MachinesOwned {
 function Get-MachineDetails {
     <#
     .SYNOPSIS
-    Get a list of artifact assembly names from github repo actions
+    Get a specific / a list of machine(s)
     
     .DESCRIPTION
-    Retrieves assembly names and prints to screen
+    Retrieves a specific / a list of machine(s) and prints to screen or stores in a variable $Machine (if single result)
 
     .PARAMETER MachineName
     Name of machine
@@ -146,6 +146,9 @@ function Get-MachineDetails {
 
     .PARAMETER Owned
     Only shows machines which have a user or root own
+
+    .PARAMETER NoOutput
+    Does not print to screen. Sets to a var called $Machine instead
 
     .EXAMPLE
     PS C:\> Get-MachineDetails -MachineName MultiMaster
@@ -185,7 +188,9 @@ function Get-MachineDetails {
     [ValidateSet('All','Active','Retired')]
     [String]$Status = "All",
     [Parameter(Mandatory=$false, ParameterSetName="OS")]
-    [Switch]$Owned
+    [Switch]$Owned,
+    [Parameter(Mandatory=$false)]
+    [Switch]$NoOutput
     )
 
     # Gather machine data
@@ -215,7 +220,13 @@ function Get-MachineDetails {
                         $Machine | Add-Member -NotePropertyName owned_root -NotePropertyValue $false
                     }
                 # Produce an output
-                return $Machine
+                if ($NoOutput -eq $false) {
+                    return $Machine
+                }
+                else {
+                    Set-Variable -Name Machine -Value $Machine -Scope Global
+                    return
+                }
             }
         }
         # Produce an error if can't find machine
@@ -244,7 +255,13 @@ function Get-MachineDetails {
                         $Machine | Add-Member -NotePropertyName owned_root -NotePropertyValue $false
                     }
                 # Produce an output
-                return $Machine
+                if ($NoOutput -eq $false) {
+                    return $Machine
+                }
+                else {
+                    Set-Variable -Name Machine -Value $Machine -Scope Global
+                    return
+                }
             }
         }
         # Produce an error if can't find machine
@@ -273,7 +290,13 @@ function Get-MachineDetails {
                         $Machine | Add-Member -NotePropertyName owned_root -NotePropertyValue $false
                     }
                 # Produce an output
-                return $Machine
+                if ($NoOutput -eq $false) {
+                    return $Machine
+                }
+                else {
+                    Set-Variable -Name Machine -Value $Machine -Scope Global
+                    return
+                }
             }
         }
         # Produce an erorr if can't find machine
@@ -378,10 +401,10 @@ function Get-MachineDetails {
 function Submit-Flag {
     <#
     .SYNOPSIS
-    Get a list of artifact assembly names from github repo actions
+    Submit user or root flag
     
     .DESCRIPTION
-    Retrieves assembly names and prints to screen
+    Submits a user or root flag own through HTB API
 
     .PARAMETER MachineName
     Name of machine
@@ -497,5 +520,751 @@ function Submit-Flag {
     else {
         Write-Output "Successfully sumitted flag!"
         Write-Output $json.status
+    }
+}
+function Reset-Machine {
+    <#
+    .SYNOPSIS
+    Reset a machine on HTB
+    
+    .DESCRIPTION
+    Resets a machine from a given name, ID or IP and prints API response to screen
+
+    .PARAMETER MachineName
+    Name of machine
+
+    .PARAMETER MachineIP
+    IP of machine
+
+    .PARAMETER MachineID
+    ID of machine
+
+    .EXAMPLE
+    PS C:\> Reset-Machine -MachineName MultiMaster
+
+    .EXAMPLE
+    PS C:\> Reset-Machine -MachineIP 10.10.10.179
+
+    .EXAMPLE
+    PS C:\> Reset-Machine -MachineID 232
+
+    .INPUTS
+        
+    .OUTPUTS
+    System.Object
+
+    .NOTES
+
+    .LINK 
+    https://github.com/0xGeorge/HackTheBox-API
+    #>
+
+    [CmdletBinding(DefaultParameterSetName='MachineName')]
+    param (
+    [Parameter(Mandatory=$true, ParameterSetName="MachineName")]
+    [String]$MachineName,
+    [Parameter(Mandatory=$true, ParameterSetName="MachineIP")]
+    [String]$MachineIP,
+    [Parameter(Mandatory=$true, ParameterSetName="MachineID")]
+    [Int]$MachineID
+    )
+
+    # Check which parameter was passed and verify format before retrieving machine details
+    if ($PSCmdlet.ParameterSetName -eq "MachineName") {
+        if ($MachineName -notmatch '^(\d|\w)+$') {
+            Write-Error "Invalid Machine Name. No spaces or special characters allowed!"
+            return
+        }
+        Get-MachineDetails -MachineName $MachineName -NoOutput
+    }
+    if ($PSCmdlet.ParameterSetName -eq "MachineIP") {
+        if ($MachineIP -notmatch '^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$') {
+            Write-Error "Enter a valid IPv4 address!"
+            return
+        }
+        Get-MachineDetails -MachineIP $MachineIP -NoOutput
+    }
+    if ($PSCmdlet.ParameterSetName -eq "MachineID") {
+        if ($MachineID -notmatch '^\d{1,3}$') {
+            Write-Error "Invalid Machine ID. Must be no larger than 3 digits!"
+            return
+        }
+        Get-MachineDetails -MachineID $MachineID -NoOutput
+    }  
+
+    # Submit request to API
+    try {
+        $req = Invoke-WebRequest -Uri $APIUri/vm/reset/$MachineID`?api_token=$APIToken -UserAgent $UserAgent -UseBasicParsing -Method POST
+        $StatusCode = $req.StatusCode
+    }
+    catch {
+        $StatusCode = $_.Exception.Response.StatusCode.value__
+    }
+    # Error if unexpected response
+    if ($StatusCode -ne 200) {
+        Write-Error "Could not reset machine. Received unexpected status code: $StatusCode"
+        return
+    }
+    # Parse and store data
+    else {   
+        $json = $req.Content | ConvertFrom-Json  
+    }
+    # Produce an output
+    return $json
+}
+function Expand-Machine {
+    <#
+    .SYNOPSIS
+    Extend a machine on HTB
+    
+    .DESCRIPTION
+    Extends a machine from a given name, ID or IP and prints API response to screen
+
+    .PARAMETER MachineName
+    Name of machine
+
+    .PARAMETER MachineIP
+    IP of machine
+
+    .PARAMETER MachineID
+    ID of machine
+
+    .EXAMPLE
+    PS C:\> Expand-Machine -MachineName MultiMaster
+
+    .EXAMPLE
+    PS C:\> Expand-Machine -MachineIP 10.10.10.179
+
+    .EXAMPLE
+    PS C:\> Expand-Machine -MachineID 232
+
+    .INPUTS
+        
+    .OUTPUTS
+    System.Object
+
+    .NOTES
+
+    .LINK 
+    https://github.com/0xGeorge/HackTheBox-API
+    #>
+
+    [CmdletBinding(DefaultParameterSetName='MachineName')]
+    param (
+    [Parameter(Mandatory=$true, ParameterSetName="MachineName")]
+    [String]$MachineName,
+    [Parameter(Mandatory=$true, ParameterSetName="MachineIP")]
+    [String]$MachineIP,
+    [Parameter(Mandatory=$true, ParameterSetName="MachineID")]
+    [Int]$MachineID
+    )
+
+    # Check which parameter was passed and verify format before retrieving machine details
+    if ($PSCmdlet.ParameterSetName -eq "MachineName") {
+        if ($MachineName -notmatch '^(\d|\w)+$') {
+            Write-Error "Invalid Machine Name. No spaces or special characters allowed!"
+            return
+        }
+        Get-MachineDetails -MachineName $MachineName -NoOutput
+    }
+    if ($PSCmdlet.ParameterSetName -eq "MachineIP") {
+        if ($MachineIP -notmatch '^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$') {
+            Write-Error "Enter a valid IPv4 address!"
+            return
+        }
+        Get-MachineDetails -MachineIP $MachineIP -NoOutput
+    }
+    if ($PSCmdlet.ParameterSetName -eq "MachineID") {
+        if ($MachineID -notmatch '^\d{1,3}$') {
+            Write-Error "Invalid Machine ID. Must be no larger than 3 digits!"
+            return
+        }
+        Get-MachineDetails -MachineID $MachineID -NoOutput
+    } 
+
+    # Submit request to API
+    try {
+        $req = Invoke-WebRequest -Uri $APIUri/vm/vip/extend/$MachineID`?api_token=$APIToken -UserAgent $UserAgent -UseBasicParsing -Method POST
+        $StatusCode = $req.StatusCode
+    }
+    catch {
+        $StatusCode = $_.Exception.Response.StatusCode.value__
+    }
+    # Error if unexpected response
+    if ($StatusCode -ne 200) {
+        Write-Error "Could not extend machine. Received unexpected status code: $StatusCode"
+        return
+    }
+    # Parse and store data
+    else {   
+        $json = $req.Content | ConvertFrom-Json  
+    }
+    # Produce an output
+    return $json
+}
+function Start-Machine {
+    <#
+    .SYNOPSIS
+    Start a machine on HTB
+    
+    .DESCRIPTION
+    Starts a machine from a given name, ID or IP and prints API response to screen
+
+    .PARAMETER MachineName
+    Name of machine
+
+    .PARAMETER MachineIP
+    IP of machine
+
+    .PARAMETER MachineID
+    ID of machine
+
+    .EXAMPLE
+    PS C:\> Start-Machine -MachineName MultiMaster
+
+    .EXAMPLE
+    PS C:\> Start-Machine -MachineIP 10.10.10.179
+
+    .EXAMPLE
+    PS C:\> Start-Machine -MachineID 232
+
+    .INPUTS
+        
+    .OUTPUTS
+    System.Object
+
+    .NOTES
+
+    .LINK 
+    https://github.com/0xGeorge/HackTheBox-API
+    #>
+
+    [CmdletBinding(DefaultParameterSetName='MachineName')]
+    param (
+    [Parameter(Mandatory=$true, ParameterSetName="MachineName")]
+    [String]$MachineName,
+    [Parameter(Mandatory=$true, ParameterSetName="MachineIP")]
+    [String]$MachineIP,
+    [Parameter(Mandatory=$true, ParameterSetName="MachineID")]
+    [Int]$MachineID
+    )
+
+    # Check which parameter was passed and verify format before retrieving machine details
+    if ($PSCmdlet.ParameterSetName -eq "MachineName") {
+        if ($MachineName -notmatch '^(\d|\w)+$') {
+            Write-Error "Invalid Machine Name. No spaces or special characters allowed!"
+            return
+        }
+        Get-MachineDetails -MachineName $MachineName -NoOutput
+    }
+    if ($PSCmdlet.ParameterSetName -eq "MachineIP") {
+        if ($MachineIP -notmatch '^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$') {
+            Write-Error "Enter a valid IPv4 address!"
+            return
+        }
+        Get-MachineDetails -MachineIP $MachineIP -NoOutput
+    }
+    if ($PSCmdlet.ParameterSetName -eq "MachineID") {
+        if ($MachineID -notmatch '^\d{1,3}$') {
+            Write-Error "Invalid Machine ID. Must be no larger than 3 digits!"
+            return
+        }
+        Get-MachineDetails -MachineID $MachineID -NoOutput
+    }
+
+    # Submit request to API
+    try {
+        $req = Invoke-WebRequest -Uri $APIUri/vm/vip/assign/$MachineID`?api_token=$APIToken -UserAgent $UserAgent -UseBasicParsing -Method POST
+        $StatusCode = $req.StatusCode
+    }
+    catch {
+        $StatusCode = $_.Exception.Response.StatusCode.value__
+    }
+    # Error if unexpected response
+    if ($StatusCode -ne 200) {
+        Write-Error "Could not start machine. Received unexpected status code: $StatusCode"
+        return
+    }
+    # Parse and store data
+    else {   
+        $json = $req.Content | ConvertFrom-Json  
+    }
+    # Produce an output
+    return $json
+}
+function Stop-Machine {
+    <#
+    .SYNOPSIS
+    Stop a machine on HTB
+    
+    .DESCRIPTION
+    Stops a machine from a given name, ID or IP and prints API response to screen
+
+    .PARAMETER MachineName
+    Name of machine
+
+    .PARAMETER MachineIP
+    IP of machine
+
+    .PARAMETER MachineID
+    ID of machine
+
+    .EXAMPLE
+    PS C:\> Stop-Machine -MachineName MultiMaster
+
+    .EXAMPLE
+    PS C:\> Stop-Machine -MachineIP 10.10.10.179
+
+    .EXAMPLE
+    PS C:\> Stop-Machine -MachineID 232
+
+    .INPUTS
+        
+    .OUTPUTS
+    System.Object
+
+    .NOTES
+
+    .LINK 
+    https://github.com/0xGeorge/HackTheBox-API
+    #>
+
+    [CmdletBinding(DefaultParameterSetName='MachineName')]
+    param (
+    [Parameter(Mandatory=$true, ParameterSetName="MachineName")]
+    [String]$MachineName,
+    [Parameter(Mandatory=$true, ParameterSetName="MachineIP")]
+    [String]$MachineIP,
+    [Parameter(Mandatory=$true, ParameterSetName="MachineID")]
+    [Int]$MachineID
+    )
+
+    # Check which parameter was passed and verify format before retrieving machine details
+    if ($PSCmdlet.ParameterSetName -eq "MachineName") {
+        if ($MachineName -notmatch '^(\d|\w)+$') {
+            Write-Error "Invalid Machine Name. No spaces or special characters allowed!"
+            return
+        }
+        Get-MachineDetails -MachineName $MachineName -NoOutput
+    }
+    if ($PSCmdlet.ParameterSetName -eq "MachineIP") {
+        if ($MachineIP -notmatch '^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$') {
+            Write-Error "Enter a valid IPv4 address!"
+            return
+        }
+        Get-MachineDetails -MachineIP $MachineIP -NoOutput
+    }
+    if ($PSCmdlet.ParameterSetName -eq "MachineID") {
+        if ($MachineID -notmatch '^\d{1,3}$') {
+            Write-Error "Invalid Machine ID. Must be no larger than 3 digits!"
+            return
+        }
+        Get-MachineDetails -MachineID $MachineID -NoOutput
+    }
+
+    # Submit request to API
+    try {
+        $req = Invoke-WebRequest -Uri $APIUri/vm/vip/remove/$MachineID`?api_token=$APIToken -UserAgent $UserAgent -UseBasicParsing -Method POST
+        $StatusCode = $req.StatusCode
+    }
+    catch {
+        $StatusCode = $_.Exception.Response.StatusCode.value__
+    }
+    # Error if unexpected response
+    if ($StatusCode -ne 200) {
+        Write-Error "Could not stop machine. Received unexpected status code: $StatusCode"
+        return
+    }
+    # Parse and store data
+    else {   
+        $json = $req.Content | ConvertFrom-Json  
+    }
+    # Produce an output
+    return $json
+}
+########################################################################################## V4 API BELOW HERE ##########################################################################################
+function Request-HTBJWT {
+    [CmdletBinding()]
+    param (
+    [Parameter(Mandatory=$true)]
+    [String]$Email,
+    [Parameter(Mandatory=$false)]
+    [Security.SecureString]$Password
+    )
+    
+    # Check if Password was passed with a value, if not prompt for password and convert to plaintext
+    $emptypwd = [string]::IsNullOrWhiteSpace($Password)
+    if ($emptypwd -eq $true) {
+        $Password = Read-Host 'Please enter your password' -AsSecureString
+        $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)
+        $PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+    }
+
+    try {
+        $body = "{`"email`":`"$Email`",`"password`":`"$PlainPassword`",`"remember`":`"true`"}"
+        $req = Invoke-WebRequest -Uri $APIUri/v4/login -Body $body -UserAgent $UserAgent -UseBasicParsing -ContentType 'application/json;charset=utf-8' -Method POST 
+        $StatusCode = $req.StatusCode
+    }
+    catch {
+        $StatusCode = $_.Exception.Response.StatusCode.value__
+    }
+    # Error if unexpected response
+    if ($StatusCode -ne 200) {
+        Write-Error "Could not get token. Received unexpected status code: $StatusCode"
+        return
+    }
+    # Parse and store data
+    else {   
+        $json = $req.Content | ConvertFrom-Json  
+    }
+    # Produce an output
+    $token = $json.message.access_token
+
+    # Convert Token to Encrypted Secure String and store
+    $securestring = ConvertTo-SecureString $token -AsPlainText -Force 
+    $encryptedstring = ConvertFrom-SecureString -SecureString $securestring
+    $encryptedstring | Export-Clixml -Path $PSScriptRoot\htbjwt.xml
+    Write-Output "Stored encrypted token at $PSScriptRoot\htbjwt.xml"
+}
+function Read-HTBJWT {
+
+    if ((Test-Path -Path $PSScriptRoot\htbjwt.xml -PathType Leaf) -eq $false) {
+        Write-Output "Could not find token at $PSScriptRoot\htbjwt.xml. Requesting new token..."
+        Request-HTBJWT
+    }
+    else {
+        Write-Verbose "Found existing token!"
+    }
+
+    $test = Test-Path $PSScriptRoot\htbjwt.xml -OlderThan (Get-Date).AddDays(-29)
+
+    if ($test -eq $true) {
+        Write-Verbose "Token is older than 29 days. Due to expire soon. Requesting fresh token"
+        Request-HTBJWT
+    }
+    else {
+        Write-Verbose "Token is not 29 days old yet"
+    }
+
+    if ($token -notmatch '^[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*$') {
+        Write-Verbose "Token does not appear to be in `$token. Reading token..."
+        $encryptedstring = Import-CliXml -Path $PSScriptRoot\htbjwt.xml
+        $encryptedstring = ConvertTo-SecureString $encryptedstring
+        $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($encryptedstring)
+        $token = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+        Set-Variable -Name token -Value $token -Scope Global
+    }
+    else {
+        Write-Verbose "Token stored in `$token"
+    }
+}
+function Get-ProLabProgress {
+    Read-HTBJWT
+    try {
+        $req = Invoke-WebRequest -Uri $APIUri/v4/profile/progress/prolab/5833 -Headers @{Authorization = "Bearer $token"} -UserAgent $UserAgent -UseBasicParsing
+        $StatusCode = $req.StatusCode
+    }
+    catch {
+        $StatusCode = $_.Exception.Response.StatusCode.value__
+    }
+    # Error if unexpected response
+    if ($StatusCode -ne 200) {
+        Write-Error "Could not fetch machine details. Received unexpected status code: $StatusCode"
+        return
+    }
+    # Parse and store data
+    else {   
+        $json = $req.Content | ConvertFrom-Json  
+    }
+    # Produce an output
+    return $json.profile.prolabs
+}
+function Test-ConnectionStatus {
+    
+    Read-HTBJWT
+    try {
+        $req = Invoke-WebRequest -Uri $APIUri/v4/user/connection/status -Headers @{Authorization = "Bearer $token"} -UserAgent $UserAgent -UseBasicParsing
+        $StatusCode = $req.StatusCode
+    }
+    catch {
+        $StatusCode = $_.Exception.Response.StatusCode.value__
+    }
+    # Error if unexpected response
+    if ($StatusCode -ne 200) {
+        Write-Error "Could not fetch connection status. Received unexpected status code: $StatusCode"
+        return
+    }
+    # Parse and store data
+    else {   
+        $json = $req.Content | ConvertFrom-Json  
+    }
+    # Produce an output
+    return $json
+}
+function Get-AssignedMachine {
+    Read-HTBJWT
+    try {
+        $req = Invoke-WebRequest -Uri $APIUri/v4/profile/machine/active -Headers @{Authorization = "Bearer $token"} -UserAgent $UserAgent -UseBasicParsing
+        $StatusCode = $req.StatusCode
+    }
+    catch {
+        $StatusCode = $_.Exception.Response.StatusCode.value__
+    }
+    # Error if unexpected response
+    if ($StatusCode -ne 200) {
+        Write-Error "You do not have an active machine currently. Received status code: $StatusCode"
+        return
+    }
+    # Parse and store data
+    else {   
+        $json = $req.Content | ConvertFrom-Json  
+    }
+    # Produce an output
+    return $json
+}
+function Get-ActiveMachines {
+    <#
+    .SYNOPSIS
+    Get a list of active machines
+    
+    .DESCRIPTION
+    Retrieves a list of active machines and prints to screen or stores in a variable
+
+    .PARAMETER NoOutput
+    Does not print to screen. Sets to a var called $ActiveMachines instead
+
+    .EXAMPLE
+    PS C:\> Get-ActiveMachines
+    
+    .EXAMPLE
+    PS C:\> Get-ActiveMachines -NoOutput
+
+    .INPUTS
+        
+    .OUTPUTS
+    System.Array
+
+    .NOTES
+
+    .LINK 
+    https://github.com/0xGeorge/HackTheBox-API
+    #>
+
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$false)]
+        [Switch]$NoOutput
+    )
+
+    Read-HTBJWT
+
+    try {
+        $req = Invoke-WebRequest -Uri $APIUri/v4/machine/list -Headers @{Authorization = "Bearer $token"} -UserAgent $UserAgent -UseBasicParsing
+        $StatusCode = $req.StatusCode
+    }
+    catch {
+        $StatusCode = $_.Exception.Response.StatusCode.value__
+    }
+    # Error if unexpected response
+    if ($StatusCode -ne 200) {
+        Write-Error "Could not fetch active machines. Received unexpected status code: $StatusCode"
+        return
+    }
+    # Parse and store data
+    else {   
+        $json = $req.Content | ConvertFrom-Json  
+        $ActiveMachines = $json.info
+    }
+    # Produce an output
+    if ($NoOutput -eq $false) {
+        return $ActiveMachines
+    }
+    else {
+        Set-Variable -Name ActiveMachines -Value $ActiveMachines -Scope Global
+    }
+}
+function Get-RetiredMachines {
+    <#
+    .SYNOPSIS
+    Get a list of retired machines
+    
+    .DESCRIPTION
+    Retrieves a list of retired machines and prints to screen or stores in a variable
+
+    .PARAMETER NoOutput
+    Does not print to screen. Sets to a var called $RetiredMachines instead
+
+    .EXAMPLE
+    PS C:\> Get-RetiredMachines
+    
+    .EXAMPLE
+    PS C:\> Get-RetiredMachines -NoOutput
+
+    .INPUTS
+        
+    .OUTPUTS
+    System.Array
+
+    .NOTES
+
+    .LINK 
+    https://github.com/0xGeorge/HackTheBox-API
+    #>
+
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$false)]
+        [Switch]$NoOutput
+    )
+
+    Read-HTBJWT
+
+    try {
+        $req = Invoke-WebRequest -Uri $APIUri/v4/machine/list/retired -Headers @{Authorization = "Bearer $token"} -UserAgent $UserAgent -UseBasicParsing
+        $StatusCode = $req.StatusCode
+    }
+    catch {
+        $StatusCode = $_.Exception.Response.StatusCode.value__
+    }
+    # Error if unexpected response
+    if ($StatusCode -ne 200) {
+        Write-Error "Could not fetch retired machines. Received unexpected status code: $StatusCode"
+        return
+    }
+    # Parse and store data
+    else {   
+        $json = $req.Content | ConvertFrom-Json
+        $RetiredMachines = $json.info  
+    }
+    # Produce an output
+    if ($NoOutput -eq $false) {
+        return $RetiredMachines
+    }
+    else {
+        Set-Variable -Name RetiredMachines -Value $RetiredMachines -Scope Global
+    }
+}
+function Get-ActiveChallenges {
+    <#
+    .SYNOPSIS
+    Get a list of active challenges
+    
+    .DESCRIPTION
+    Retrieves a list of active challenges and prints to screen or stores in a variable
+
+    .PARAMETER NoOutput
+    Does not print to screen. Sets to a var called $ActiveChallenges instead
+
+    .EXAMPLE
+    PS C:\> Get-ActiveChallenges
+    
+    .EXAMPLE
+    PS C:\> Get-ActiveChallenges -NoOutput
+
+    .INPUTS
+        
+    .OUTPUTS
+    System.Array
+
+    .NOTES
+
+    .LINK 
+    https://github.com/0xGeorge/HackTheBox-API
+    #>
+
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$false)]
+        [Switch]$NoOutput
+    )
+
+    Read-HTBJWT
+
+    try {
+        $req = Invoke-WebRequest -Uri $APIUri/v4/challenge/list -Headers @{Authorization = "Bearer $token"} -UserAgent $UserAgent -UseBasicParsing
+        $StatusCode = $req.StatusCode
+    }
+    catch {
+        $StatusCode = $_.Exception.Response.StatusCode.value__
+    }
+    # Error if unexpected response
+    if ($StatusCode -ne 200) {
+        Write-Error "Could not fetch active challenges. Received unexpected status code: $StatusCode"
+        return
+    }
+    # Parse and store data
+    else {   
+        $json = $req.Content | ConvertFrom-Json  
+        $ActiveChallenges = $json.challenges
+    }
+    # Produce an output
+    if ($NoOutput -eq $false) {
+        return $ActiveChallenges
+    }
+    else {
+        Set-Variable -Name ActiveChallenges -Value $ActiveChallenges -Scope Global
+    }
+}
+function Get-RetiredChallenges {
+    <#
+    .SYNOPSIS
+    Get a list of retired challenges
+    
+    .DESCRIPTION
+    Retrieves a list of retired challenges and prints to screen or stores in a variable
+
+    .PARAMETER NoOutput
+    Does not print to screen. Sets to a var called $RetiredChallenges instead
+
+    .EXAMPLE
+    PS C:\> Get-RetiredChallenges
+    
+    .EXAMPLE
+    PS C:\> Get-RetiredChallenges -NoOutput
+
+    .INPUTS
+        
+    .OUTPUTS
+    System.Array
+
+    .NOTES
+
+    .LINK 
+    https://github.com/0xGeorge/HackTheBox-API
+    #>
+
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$false)]
+        [Switch]$NoOutput
+    )
+
+    Read-HTBJWT
+
+    try {
+        $req = Invoke-WebRequest -Uri $APIUri/v4/challenge/list/retired -Headers @{Authorization = "Bearer $token"} -UserAgent $UserAgent -UseBasicParsing
+        $StatusCode = $req.StatusCode
+    }
+    catch {
+        $StatusCode = $_.Exception.Response.StatusCode.value__
+    }
+    # Error if unexpected response
+    if ($StatusCode -ne 200) {
+        Write-Error "Could not fetch retired challenges. Received unexpected status code: $StatusCode"
+        return
+    }
+    # Parse and store data
+    else {   
+        $json = $req.Content | ConvertFrom-Json
+        $RetiredChallenges = $json.challenges
+    }
+    # Produce an output
+    if ($NoOutput -eq $false) {
+        return $RetiredChallenges
+    }
+    else {
+        Set-Variable -Name RetiredChallenges -Value $RetiredChallenges -Scope Global
     }
 }
